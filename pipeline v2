@@ -1,0 +1,160 @@
+# TODO all this is crap, need to wuuit relying on boilerplate
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import numpy as np
+import pandas as pd  # For data manipulation and storage
+import os  # For file and directory operations
+import matplotlib.pyplot as plt  # For plotting
+
+class InputConfig:
+    def __init__(self):
+        # Dataset Generation Parameters
+        self.dataset_path = "inversion_dataset.csv"  # Path to save the generated dataset
+        self.dataset_size = 1000  # Number of data samples to generate
+        self.seed = 42  # Random seed for reproducibility
+
+        # Neural Network Architecture Parameters
+        self.input_size = 1  # Input size (number of features)
+        self.hidden_size = 8  # Number of hidden units in the neural network
+        self.output_size = 1  # Output size (for binary inversion)
+
+        # Training Parameters
+        self.num_epochs = 100  # Number of training epochs
+        self.learning_rate = 0.01  # Learning rate for training
+        self.batch_size = 32  # Batch size for mini-batch training
+
+        # Evaluation Parameters
+        self.eval_metrics = ["accuracy", "loss"]  # Evaluation metrics to track
+
+        # Model Save Path
+        self.model_save_path = "saved_models/"  # Path to save trained models
+
+        # Iteration Parameters
+        self.max_iterations = 5  # Maximum number of iterations between training and evaluation
+        
+class Invert(nn.Module):
+    def __init__(self, input_size, hidden_size, output_size, dataset_size, seed):
+        super(Invert, self).__init__()
+        # Define the layers and architecture of the neural network
+        self.fc1 = nn.Linear(input_size, hidden_size)
+        self.relu = nn.ReLU()
+        self.fc2 = nn.Linear(hidden_size, output_size)
+        self.sigmoid = nn.Sigmoid()
+
+        # Dataset Generation Parameters
+        self.dataset_size = dataset_size
+        self.seed = seed
+
+    def forward(self, x):
+        # Define the forward pass
+        x = self.fc1(x)
+        x = self.relu(x)
+        x = self.fc2(x)
+        x = self.sigmoid(x)
+        return x
+
+    def generate_dataset(self):
+        # Generate the dataset based on the inversion gate truth table
+        np.random.seed(self.seed)
+        inputs = torch.tensor([[0], [1]], dtype=torch.float32)
+        outputs = 1 - inputs  # Inversion operation
+        dataset = list(zip(inputs, outputs))
+
+        return dataset
+
+    def train_model(self, dataset, num_epochs, learning_rate, batch_size, model_save_path, criterion=None, optimizer=None):
+            # Define a DataLoader for batch processing
+            data_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+            # Use default Binary Cross-Entropy Loss if criterion is not provided
+            if criterion is None:
+                criterion = nn.BCELoss()
+
+            # Use default Adam optimizer if optimizer is not provided
+            if optimizer is None:
+                optimizer = optim.Adam(self.parameters(), lr=learning_rate)
+
+            # Training loop
+            for epoch in range(num_epochs):
+                total_loss = 0.0
+                for inputs, targets in data_loader:
+                    # Zero the gradients
+                    optimizer.zero_grad()
+
+                    # Forward pass
+                    outputs = self(inputs)
+
+                    # Calculate the loss
+                    loss = criterion(outputs, targets)
+
+                    # Backpropagation
+                    loss.backward()
+
+                    # Update the weights
+                    optimizer.step()
+
+                    # Track the total loss
+                    total_loss += loss.item()
+
+                # Print the average loss for this epoch
+                avg_loss = total_loss / len(data_loader)
+                print(f"Epoch [{epoch + 1}/{num_epochs}] - Loss: {avg_loss:.4f}")
+
+            # Save the trained model to the specified path
+            torch.save(self.state_dict(), model_save_path)
+            
+    def evaluate_model(self, dataset):
+        # Define the evaluation logic here
+        # Calculate evaluation metrics such as accuracy and loss
+        return
+    def save_model(self, model_path):
+        # Save the trained model to the specified path
+        torch.save(self.state_dict(), model_path)
+
+def main(model_instance, input_config):
+    # Step 1: Generate Dataset
+    dataset = model_instance.generate_dataset()
+
+    # Define a path to save the trained model
+    model_save_path = "invert_model.pth"
+
+    # Step 2: Training and Hyperparameter Tuning
+    trained_models = model_instance.train_model(dataset, input_config.num_epochs, input_config.learning_rate, input_config.batch_size, model_save_path)
+
+    # Step 3: Iteration (Adjust Hyperparameters, Data, or Model Architecture)
+    for iteration in range(input_config.max_iterations):
+        # Step 4: Evaluation
+        evaluation_results = model_instance.evaluate_model(trained_models, dataset)
+
+        # Step 5: Stress Test
+        stress_test_results = model_instance.stress_test(trained_models, dataset)
+
+        # Step 6: Output
+        model_instance.output(trained_models, evaluation_results, stress_test_results)
+
+        # Check stopping criteria (e.g., based on evaluation results)
+        if stopping_criteria_met(evaluation_results):
+            break
+
+    # Step 7: Final Model Selection
+    final_model = select_best_model(trained_models, evaluation_results)
+
+    # Step 8: Final Evaluation
+    final_evaluation_results = model_instance.evaluate_model(final_model, dataset)
+
+    # Step 9: Final Stress Test
+    final_stress_test_results = model_instance.stress_test(final_model, dataset)
+
+    # Step 10: Model Deployment
+    model_instance.deploy(final_model)
+
+if __name__ == "__main__":
+    # Create an instance of the Input Configuration Class
+    input_config = InputConfig()
+
+    # Create an instance of the Invert class with appropriate parameters
+    invert_model = Invert(input_config.input_size, input_config.hidden_size, input_config.output_size, input_config.dataset_size, input_config.seed)
+
+    # Call the main function to execute the pipeline
+    main(invert_model, input_config)
